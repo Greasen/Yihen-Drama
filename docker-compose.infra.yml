@@ -113,58 +113,6 @@ services:
     ports:
       - "5601:5601"
 
-  backend:
-    build:
-      context: ./yihen-drama
-      dockerfile: Dockerfile
-      args:
-        MAVEN_IMAGE: docker.1ms.run/library/maven:3.9.9-eclipse-temurin-17
-        JRE_IMAGE: docker.1ms.run/library/eclipse-temurin:17-jre
-    container_name: yihen-backend
-    restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mq:
-        condition: service_healthy
-      minio:
-        condition: service_started
-      es:
-        condition: service_healthy
-    environment:
-      TZ: Asia/Shanghai
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/YihenDrama?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2b8
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: yihen0214
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_RABBITMQ_HOST: mq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: yihen
-      SPRING_RABBITMQ_PASSWORD: yihen0214
-      SPRING_ELASTICSEARCH_URIS: http://es:9200
-      MINIO_END_POINT: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    ports:
-      - "8080:8080"
-
-  frontend:
-    build:
-      context: ./yihen-ai-short-drama-front-end/frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: ""
-    container_name: yihen-frontend
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_started
-    ports:
-      - "3000:3000"
-
 volumes:
   mysql_data:
   redis_data:

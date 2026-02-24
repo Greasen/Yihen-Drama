@@ -180,12 +180,26 @@ export const sceneApi = {
 }
 
 export const modelInstanceApi = {
+  normalizePayload: (data = {}) => {
+    const payload = { ...data }
+    if (payload.params && typeof payload.params === 'object') {
+      const params = { ...payload.params }
+      if (params.maxTokens !== undefined && params.max_token === undefined) {
+        params.max_token = params.maxTokens
+      }
+      if (params.maxTokens !== undefined) {
+        delete params.maxTokens
+      }
+      payload.params = params
+    }
+    return payload
+  },
   list: (modelType, params = {}) => apiClient.get(`/api/models/model-instance-by-type/${modelType}`, { params }),
   get: (id) => apiClient.get(`/api/models/mod/${id}`),
-  create: (data) => apiClient.post('/api/models/add-model-instance', data),
+  create: (data) => apiClient.post('/api/models/add-model-instance', modelInstanceApi.normalizePayload(data)),
   update: (id, data) => {
-    data.id = id
-    return apiClient.post('/api/models/update-model-instance', data)
+    const payload = modelInstanceApi.normalizePayload({ ...data, id })
+    return apiClient.post('/api/models/update-model-instance', payload)
   },
   delete: (id) => apiClient.delete(`/api/models/model-instance/${id}`),
   setDefault: (id) => apiClient.put(`/api/models/mod/${id}/default`),

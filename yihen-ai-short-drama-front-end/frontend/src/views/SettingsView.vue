@@ -330,7 +330,7 @@
                   <input
                     type="number"
                     class="config-input small"
-                    v-model="currentConfig.config.maxTokens"
+                    v-model="currentConfig.config.max_tokens"
                     min="1000"
                     max="128000"
                   />

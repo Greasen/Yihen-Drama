@@ -1,151 +1,160 @@
 # Yihen-Drama（AI 短剧生成平台）
 
-面向“剧情文本 → 信息提取 → 角色/场景图生成 → 分镜生成 → 视频生成/编辑”的一体化创作系统。  
-本仓库包含完整前后端代码与一键部署编排（MySQL/Redis/RabbitMQ/MinIO/Elasticsearch/Kibana）。
+一个覆盖「文本输入 → 信息提取 → 人物/场景图生成 → 分镜生成 → 视频生成/编辑」的全流程短剧创作系统。
 
-## 功能概览
+仓库包含：
+- 后端：`yihen-drama`（Spring Boot）
+- 前端：`yihen-ai-short-drama-front-end/frontend`（Vue 3 + Vite）
+- 容器编排：支持**开发模式**与**一键全容器模式**
 
-- 项目管理：创建、编辑、删除、搜索、分页
-- 章节管理：创建、更新、删除、流程步骤控制
-- 提取能力：角色/场景提取与回写
-- 素材能力：角色与场景的增删改查、搜索、上传、替换
-- 分镜能力：分镜生成、编辑、删除、关联角色/场景、提示词维护
-- 视频能力：分镜首帧、分镜视频提示词、视频任务提交与轮询回传（WebSocket）
-- 模型管理：厂商、模型实例、默认实例、按类型管理（文本/图像/视频/语音）
-- 搜索能力：项目、角色、场景的 ES 搜索与 suggest 补全
+---
 
-## 技术栈
+## 1. 功能概览
 
-- 前端：Vue 3 + Vite + Vue Router + Pinia + Axios + Sass
-- 后端：Spring Boot 3 + MyBatis-Plus + Redis + RabbitMQ + Elasticsearch + MinIO
-- 基础设施：Docker Compose（MySQL 8 / Redis 7 / RabbitMQ 4 / MinIO / ES 8.11.3 / Kibana）
+- 项目/章节管理：创建、编辑、删除、搜索、分页
+- 信息提取：人物与场景提取
+- 资产管理：角色/场景增删改查、上传、搜索
+- 分镜管理：生成、编辑、删除、关联角色/场景、提示词
+- 视频流程：首帧、分镜视频提示词、视频任务提交与状态回传（WebSocket）
+- 模型管理：厂商、模型实例、默认模型实例（文本/图像/视频/语音）
+- ES 搜索与补全：项目、角色、场景
 
-## 仓库结构
+---
 
-```text
-.
-├─ docker-compose.yml
-├─ deploy.ps1 / deploy.bat
-├─ yihen-drama/                               # 后端
-│  ├─ src/main/java/com/yihen/controller/...
-│  ├─ src/main/resources/application.yml
-│  ├─ sql/init_schema.sql                     # MySQL 初始化脚本
-│  ├─ docker/elasticsearch/Dockerfile         # ES + IK/Pinyin 插件镜像
-│  └─ Dockerfile
-└─ yihen-ai-short-drama-front-end/frontend/   # 前端
-   ├─ src/
-   ├─ Dockerfile
-   └─ nginx.conf
-```
+## 2. 运行模式（重点）
 
-## 运行方式
+### A. 本地开发模式（推荐日常开发）
 
-### 1) 一键 Docker 启动（推荐）
+前后端本机运行；MySQL/Redis/RabbitMQ/MinIO/ES/Kibana 用容器。
 
-在仓库根目录执行：
-
-```bash
-docker compose up -d --build
-```
-
-Windows 可直接执行：
-
+#### 1) 启动中间件
 ```powershell
-./deploy.ps1
+.\infra-up.ps1
 ```
-
 或
-
 ```bat
-deploy.bat
+infra-up.bat
+```
+等价命令：
+```bash
+docker compose -f docker-compose.infra.yml up -d --build
 ```
 
-启动后默认访问：
-
-- 前端：`http://localhost:3000`
-- 后端：`http://localhost:8080`
-- Swagger/Knife4j：`http://localhost:8080/doc.html`
-- MinIO Console：`http://localhost:9001`
-- RabbitMQ Console：`http://localhost:15672`
-- Kibana：`http://localhost:5601`
-- Elasticsearch：`http://localhost:9200`
-
-> 首次启动会自动初始化 MySQL：`yihen-drama/sql/init_schema.sql`。  
-> 仅在 `mysql_data` 卷为空时执行；若需重新初始化，请先 `docker compose down -v`。
-
-### 2) 本地开发运行（分开）
-
-#### 后端
-
+#### 2) 启动后端（本机）
 ```bash
 cd yihen-drama
-mvn clean package
 mvn spring-boot:run
 ```
+默认端口：`8080`
 
-#### 前端
-
+#### 3) 启动前端（本机）
 ```bash
 cd yihen-ai-short-drama-front-end/frontend
 npm install
 npm run dev
 ```
+默认端口：`3000`
 
-## Docker 编排说明
+说明：
+- 前端开发代理已配置：`/api` 与 `/webSocket` 自动转发到 `localhost:8080`
+- 不需要在前端手工改成 `8080`
 
-`docker-compose.yml` 已包含以下服务并按健康检查顺序依赖启动：
+---
 
-- `mysql`（自动执行 init_schema.sql）
-- `redis`
-- `mq`（RabbitMQ）
-- `minio`
-- `es`（自定义镜像，自动安装 IK + Pinyin）
-- `kibana`
-- `backend`
-- `frontend`
+### B. 一键全容器模式（部署/演示）
 
-### Elasticsearch 中文插件（IK + Pinyin）
-
-已内置在 `yihen-drama/docker/elasticsearch/Dockerfile`。  
-部署时自动安装，无需手工进入容器执行。
-
-可验证：
-
+```powershell
+.\deploy.ps1
+```
+或
+```bat
+deploy.bat
+```
+等价命令：
 ```bash
-docker compose exec es elasticsearch-plugin list
-docker compose exec es curl -s http://localhost:9200/_cat/plugins?v
+docker compose -f docker-compose.full.yml up -d --build
 ```
 
-## 配置说明
+---
 
-后端关键配置在 `yihen-drama/src/main/resources/application.yml`，支持通过环境变量覆盖，Compose 已预置：
+## 3. 访问地址
 
-- 数据库：`SPRING_DATASOURCE_URL/USERNAME/PASSWORD`
-- Redis：`SPRING_DATA_REDIS_HOST/SPRING_DATA_REDIS_PORT`
-- RabbitMQ：`SPRING_RABBITMQ_HOST/PORT/USERNAME/PASSWORD`
-- Elasticsearch：`SPRING_ELASTICSEARCH_URIS`
-- MinIO：`MINIO_END_POINT/MINIO_ACCESS_KEY/MINIO_SECRET_KEY`
+- 前端：`http://localhost:3000`
+- 后端：`http://localhost:8080`
+- API 文档：`http://localhost:8080/doc.html`
+- MinIO Console：`http://localhost:9001`
+- RabbitMQ Console：`http://localhost:15672`
+- Elasticsearch：`http://localhost:9200`
+- Kibana：`http://localhost:5601`
 
-前端可通过 `VITE_API_BASE_URL` 指定 API 基地址（Compose 中使用同域代理方式，默认留空）。
+---
 
-## 常见问题
+## 4. 数据库初始化
 
-### 1. 后端报 Redis 连接失败
+- 初始化脚本：`yihen-drama/sql/init_schema.sql`
+- 在 MySQL 数据卷为空时自动执行
+- 如需重置初始化：
+```bash
+docker compose -f docker-compose.full.yml down -v
+docker compose -f docker-compose.full.yml up -d --build
+```
 
-- 确认 `docker compose ps` 中 `yihen-redis` 为 `healthy`
-- 确认后端使用的是 `SPRING_DATA_REDIS_HOST=redis`（非 localhost）
+---
 
-### 2. MySQL 未重新初始化
+## 5. Elasticsearch 插件（IK + pinyin）
 
-- `init_schema.sql` 只在空数据卷执行
-- 执行 `docker compose down -v` 后再 `up -d --build`
+已内置在 `yihen-drama/docker/elasticsearch/Dockerfile`，随编排自动安装。
 
-### 3. DockerHub 拉取超时
+可验证：
+```bash
+docker compose -f docker-compose.full.yml exec es elasticsearch-plugin list
+```
 
-- 本项目已将后端/ES 镜像切到镜像源（`docker.1ms.run`）
-- 如前端镜像拉取失败，可将前端 Dockerfile 基础镜像也切到可用镜像源
+---
 
-## 模块文档
+## 6. 关键配置说明
+
+后端配置文件：`yihen-drama/src/main/resources/application.yml`
+
+已改为环境变量优先，兼容两种运行模式。核心变量：
+- `SPRING_DATASOURCE_URL/USERNAME/PASSWORD`
+- `SPRING_DATA_REDIS_HOST/PORT/PASSWORD`
+- `SPRING_RABBITMQ_HOST/PORT/USERNAME/PASSWORD`
+- `SPRING_ELASTICSEARCH_URIS`
+- `MINIO_END_POINT/MINIO_ACCESS_KEY/MINIO_SECRET_KEY`
+
+---
+
+## 7. 项目结构
+
+```text
+.
+├─ docker-compose.infra.yml     # 仅中间件
+├─ docker-compose.full.yml      # 前后端 + 中间件
+├─ infra-up.ps1 / infra-up.bat
+├─ deploy.ps1 / deploy.bat
+├─ yihen-drama                  # 后端
+└─ yihen-ai-short-drama-front-end/frontend  # 前端
+```
+
+---
+
+## 8. 常见问题
+
+### Q1: 后端报 Redis 连接失败
+- 检查 `docker compose -f docker-compose.infra.yml ps`
+- 确保 `redis` 已启动并健康
+
+### Q2: 前端请求打到了 3000 而不是 8080
+- 本地开发这是正常行为（Vite 代理）
+- 真正后端仍是 `8080`
+
+### Q3: DockerHub 拉取超时
+- 可替换镜像源，或提前 `docker pull` 所需镜像
+
+---
+
+## 9. 子模块文档
 
 - 后端文档：`yihen-drama/README.md`
 - 前端文档：`yihen-ai-short-drama-front-end/frontend/README.md`

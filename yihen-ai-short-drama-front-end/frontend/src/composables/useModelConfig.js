@@ -129,7 +129,7 @@ const defaultConfigs = {
     baseUrl: '',
     path: '',
     temperature: 0.7,
-    maxTokens: 4000,
+    max_tokens: 4000,
     sceneCode: 'SCENE_GEN'
   },
   image: {
@@ -219,6 +219,10 @@ export function useModelConfig() {
       config = {}
     }
 
+    if (type === 'text' && config.max_tokens !== undefined && config.max_tokens === undefined) {
+      config.max_tokens = config.max_tokens
+    }
+
     return {
       id: item.id,
       type: type,
@@ -246,7 +250,7 @@ export function useModelConfig() {
     const params = {}
     if (uiData.type === 'text') {
       params.temperature = Number(uiData.config?.temperature) || 0.7
-      params.maxTokens = Number(uiData.config?.maxTokens) || 4000
+      params.max_tokens = Number(uiData.config?.max_tokens ) || 4000
     } else if (uiData.type === 'image') {
       params.resolution = uiData.config?.resolution || '1024x1024'
       params.quality = uiData.config?.quality || 'standard'
@@ -636,8 +640,8 @@ export function useModelConfig() {
 // 模拟数据（API不可用时降级使用）
 function getMockInstances() {
   return [
-    { id: 1, type: 'text', name: 'GPT-4 默认', isDefault: true, config: { provider: 'openai', apiKey: '***', model: 'gpt-4o', temperature: 0.7, maxTokens: 4000 } },
-    { id: 2, type: 'text', name: 'Claude 3.5', isDefault: false, config: { provider: 'anthropic', apiKey: '***', model: 'claude-3-5-sonnet', temperature: 0.7, maxTokens: 4000 } },
+    { id: 1, type: 'text', name: 'GPT-4 默认', isDefault: true, config: { provider: 'openai', apiKey: '***', model: 'gpt-4o', temperature: 0.7, max_tokens: 4000 } },
+    { id: 2, type: 'text', name: 'Claude 3.5', isDefault: false, config: { provider: 'anthropic', apiKey: '***', model: 'claude-3-5-sonnet', temperature: 0.7, max_tokens: 4000 } },
     { id: 3, type: 'image', name: 'DALL-E 3', isDefault: true, config: { provider: 'openai', apiKey: '***', resolution: '1024x1024', quality: 'standard' } },
     { id: 4, type: 'video', name: '可灵视频', isDefault: true, config: { provider: 'kling', apiKey: '***', fps: 30, duration: 5 } },
     { id: 5, type: 'audio', name: 'Azure 语音', isDefault: true, config: { provider: 'azure', apiKey: '***', voice: 'zh-CN-Xiaoxiao', speed: 1.0 } }

@@ -16,6 +16,7 @@ import com.yihen.http.HttpExecutor;
 import com.yihen.service.*;
 import com.yihen.core.model.InfoExtractTextModelService;
 import com.yihen.util.MinioUtil;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,8 +25,10 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @Service
 public class EpisodeExtractOrchestrator {
@@ -42,7 +45,9 @@ public class EpisodeExtractOrchestrator {
     private EpisodePersistFacade episodePersistFacade;
 
 
-    private static final ExecutorService EXECUTORSERVICE = Executors.newFixedThreadPool(5);
+    @Autowired
+    @Qualifier("episodeExecutor")
+    private Executor episodeExecutor;
 
     @Autowired
     private CharacterService characterService;
@@ -101,7 +106,7 @@ public class EpisodeExtractOrchestrator {
             // 5. 修改章节状态
             episode.setCurrentStep(EpisodeStep.GENERATE_IMAGES);
             episodeService.updateById(episode);
-        }, EXECUTORSERVICE);
+        }, episodeExecutor);
 
         return extract;
     }
@@ -113,6 +118,59 @@ public class EpisodeExtractOrchestrator {
         episodePersistFacade.updateEpisodeCharacterAsync(characters);
 
         return characters;
+    }
+
+    // 批量生成人物图片（复用单个生成逻辑，并发执行）
+    public List<Characters> generateCharacterAndSaveAssets(List<CharactersRequestVO> requestList) throws Exception {
+        if (ObjectUtils.isEmpty(requestList)) {
+            throw new RuntimeException("批量生成人物请求不能为空");
+        }
+        if (requestList.size() > 20) {
+            throw new RuntimeException("单次批量生成不能超过20个角色");
+        }
+
+        List<CompletableFuture<Characters>> futures = requestList.stream()
+                .map(request -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return generateCharacterAndSaveAssets(request);
+                    } catch (Exception e) {
+                        throw new CompletionException(new RuntimeException(
+                                "角色图片生成失败，角色ID: " + request.getCharcterId(), e
+                        ));
+                    }
+                }, episodeExecutor))
+                .toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        return futures.stream().map(CompletableFuture::join).toList();
+    }
+
+    public void generateCharacterAndSaveAssetsAsync(
+            List<CharactersRequestVO> requestList,
+            Consumer<Characters> onSuccess,
+            BiConsumer<CharactersRequestVO, Throwable> onError
+    ) {
+        if (ObjectUtils.isEmpty(requestList)) {
+            throw new RuntimeException("批量生成人物请求不能为空");
+        }
+        if (requestList.size() > 20) {
+            throw new RuntimeException("单次批量生成不能超过20个角色");
+        }
+
+        requestList.forEach(request ->
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Characters characters = generateCharacterAndSaveAssets(request);
+                        if (onSuccess != null) {
+                            onSuccess.accept(characters);
+                        }
+                    } catch (Exception e) {
+                        if (onError != null) {
+                            onError.accept(request, e);
+                        }
+                    }
+                }, episodeExecutor)
+        );
     }
 
    // 创建生成人物视频人物

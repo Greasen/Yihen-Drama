@@ -282,16 +282,39 @@
                   <div class="generation-section" v-if="extractedInfo.characters.length > 0">
                     <div class="section-title-row">
                       <h4 class="section-title">本章人物</h4>
-                      <button class="btn btn-primary btn-sm add-character-btn" @click="openAddCharacterDrawer">
-                        添加角色
-                      </button>
+                      <div class="section-header-actions">
+                        <button class="btn btn-secondary btn-sm add-character-btn" @click="generateAllCharacters">
+                          一键生成
+                        </button>
+                        <button
+                          class="btn btn-secondary btn-sm add-character-btn"
+                          @click="generateSelectedCharacters"
+                          :disabled="selectedCharacterCount === 0"
+                        >
+                          批量生成({{ selectedCharacterCount }})
+                        </button>
+                        <button class="btn btn-primary btn-sm add-character-btn" @click="openAddCharacterDrawer">
+                          添加角色
+                        </button>
+                      </div>
                     </div>
                     <div class="character-grid">
                       <div
                         v-for="character in extractedInfo.characters"
                         :key="character.id"
                         class="character-card"
+                        :class="{ selectedForBatch: isCharacterSelected(character.id) }"
                       >
+                        <button
+                          class="card-select-toggle"
+                          type="button"
+                          @click.stop="toggleCharacterSelection(character.id)"
+                          :title="isCharacterSelected(character.id) ? '取消勾选' : '勾选用于批量生成'"
+                        >
+                          <svg v-if="isCharacterSelected(character.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        </button>
                         <div 
                           class="character-avatar" 
                           v-if="character.avatar"
@@ -2045,6 +2068,7 @@ const projectCharacters = ref([])
 const projectScenes = ref([])
 const imageTabs = ['人物', '场景']
 const generatingCharacter = ref(new Set())
+const selectedCharacterIds = ref(new Set())
 const generatingVideo = ref(new Set())
 const videoTasks = ref({}) // characterId -> VideoTask
 const videoPollingIntervals = ref({}) // characterId -> intervalId
@@ -2184,6 +2208,22 @@ const hasRealAvatar = (character) => {
   return !String(avatar).startsWith('data:image/svg+xml')
 }
 
+const isCharacterSelected = (characterId) => selectedCharacterIds.value.has(characterId)
+
+const toggleCharacterSelection = (characterId) => {
+  const next = new Set(selectedCharacterIds.value)
+  if (next.has(characterId)) {
+    next.delete(characterId)
+  } else {
+    next.add(characterId)
+  }
+  selectedCharacterIds.value = next
+}
+
+const clearCharacterSelection = () => {
+  selectedCharacterIds.value = new Set()
+}
+
 const mapExtractedInfo = (data) => ({
   characters: (data?.characters || []).map(c => ({
     id: c.id,
@@ -2261,6 +2301,10 @@ const extractedInfo = ref({
   characters: [],
   scenes: []
 })
+
+const selectedCharacterCount = computed(() =>
+  extractedInfo.value.characters.filter(c => selectedCharacterIds.value.has(c.id)).length
+)
 
 const hasExtractedInfo = computed(() => {
   return extractedInfo.value.characters.length > 0 || extractedInfo.value.scenes.length > 0
@@ -2395,6 +2439,7 @@ const selectEpisode = async (episodeId, forceStepZero = false) => {
     await saveEpisode()
   }
   activeEpisode.value = episodeId
+  clearCharacterSelection()
   generatingCharacter.value.clear()
   generatingScene.value.clear()
   // 如果是强制设置为步骤0（比如刚创建的章节），否则保持原有步骤
@@ -2484,6 +2529,7 @@ const loadExtractedInfo = async (episodeId) => {
           thumbnail: s.thumbnail || ''
         }))
       }
+      clearCharacterSelection()
     }
   } catch (err) {
     console.log('暂无提取信息或获取失败')
@@ -2544,28 +2590,54 @@ const generateCharacterImage = async (character, actionType) => {
   }
 }
 
-// 批量生成所有角色图片
+const submitBatchGenerateCharacters = async (characterList) => {
+  if (!Array.isArray(characterList) || characterList.length === 0) return false
+  try {
+    const defaultRes = await modelInstanceApi.getDefault('IMAGE')
+    const defaultModel = defaultRes?.data
+    if (!defaultModel) {
+      toast.error('未找到默认图像生成模型，请先配置模型')
+      return false
+    }
+
+    const requestList = characterList.map(character => ({
+      modelInstanceId: defaultModel.id,
+      charcterId: character.id,
+      projectId: projectId,
+      description: character.description || `${character.name}的形象描述`
+    }))
+
+    characterList.forEach(character => generatingCharacter.value.add(character.id))
+    await characterApi.batchGenerateImage(requestList)
+    toast.success(`已提交 ${requestList.length} 个角色生成任务`)
+    return true
+  } catch (err) {
+    characterList.forEach(character => generatingCharacter.value.delete(character.id))
+    toast.error(err.message || '批量生成提交失败')
+    return false
+  }
+}
+
+// 一键生成：生成所有未出图角色
 const generateAllCharacters = async () => {
-  // 合并本章人物和项目人物，去重
-  const allCharacters = [
-    ...extractedInfo.value.characters,
-    ...projectCharacters.value.filter(pc => 
-      !extractedInfo.value.characters.some(ec => ec.id === pc.id)
-    )
-  ]
-  
-  const charactersWithoutAvatar = allCharacters.filter(c => !hasRealAvatar(c))
-  
+  const charactersWithoutAvatar = extractedInfo.value.characters.filter(c => !hasRealAvatar(c))
   if (charactersWithoutAvatar.length === 0) {
     toast.warning('所有角色已有图片')
     return
   }
-  
-  // 依次生成每个角色图片
-  for (const character of charactersWithoutAvatar) {
-    await generateCharacterImage(character, 'generate')
-    // 添加短暂延迟，避免请求过快
-    await new Promise(resolve => setTimeout(resolve, 500))
+  await submitBatchGenerateCharacters(charactersWithoutAvatar)
+}
+
+// 批量生成：生成勾选角色（可含已出图角色，等价重新生成）
+const generateSelectedCharacters = async () => {
+  const selectedList = extractedInfo.value.characters.filter(c => selectedCharacterIds.value.has(c.id))
+  if (selectedList.length === 0) {
+    toast.warning('请先勾选角色')
+    return
+  }
+  const ok = await submitBatchGenerateCharacters(selectedList)
+  if (ok) {
+    clearCharacterSelection()
   }
 }
 
@@ -2699,6 +2771,26 @@ const updateCharacterVideo = (characterId, videoUrl) => {
   generatingVideo.value.delete(characterId)
 }
 
+const updateCharacterImageByPayload = (characterPayload) => {
+  if (!characterPayload || !characterPayload.id) return
+  const characterId = characterPayload.id
+  const updateList = (list) => {
+    const idx = list.findIndex(c => String(c.id) === String(characterId))
+    if (idx !== -1) {
+      list[idx] = {
+        ...list[idx],
+        ...characterPayload,
+        avatar: characterPayload.avatar || list[idx].avatar
+      }
+      return true
+    }
+    return false
+  }
+  updateList(extractedInfo.value.characters)
+  updateList(projectCharacters.value)
+  generatingCharacter.value.delete(characterId)
+}
+
 const updateShotVideo = (shotId, videoUrl) => {
   if (!shotId || !videoUrl) return
   const idx = storyboards.value.findIndex(sb => String(sb.id) === String(shotId))
@@ -2728,6 +2820,20 @@ const handleWsMessage = (event) => {
     }
   }
   if (!payload) return
+  if (payload.bizType === 'CHARACTER_IMAGE_BATCH') {
+    const batchStatus = String(payload.status || '').toUpperCase()
+    if (batchStatus === 'SUCCESS' && payload.character) {
+      updateCharacterImageByPayload(payload.character)
+      return
+    }
+    if (batchStatus === 'FAIL') {
+      if (payload.targetId != null) {
+        generatingCharacter.value.delete(payload.targetId)
+      }
+      toast.error(payload.errorMessage || '角色图片生成失败')
+      return
+    }
+  }
   const statusRaw = payload.status ?? payload.taskStatus ?? payload.state
   const status = statusRaw != null ? String(statusRaw).toLowerCase() : ''
   const isFail = status === 'fail' || status === 'failed' || status === 'error' || status === 'failure'
@@ -2893,6 +2999,11 @@ const deleteCharacter = async () => {
     await characterApi.delete(id)
     extractedInfo.value.characters = extractedInfo.value.characters.filter(c => c.id !== id)
     projectCharacters.value = projectCharacters.value.filter(c => c.id !== id)
+    if (selectedCharacterIds.value.has(id)) {
+      const next = new Set(selectedCharacterIds.value)
+      next.delete(id)
+      selectedCharacterIds.value = next
+    }
     const { [id]: _removed, ...rest } = videoTasks.value
     videoTasks.value = rest
     closeDeleteConfirm()
@@ -5435,10 +5546,50 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .add-character-btn {
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 6px;
+}
+
+.character-card.selectedForBatch {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.5), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.card-select-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--gold-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    border-color: var(--gold-primary);
+    background: rgba(212, 175, 55, 0.2);
+  }
 }
 
 .delete-character-btn {

@@ -12,8 +12,7 @@ import com.yihen.entity.VideoTask;
 import com.yihen.search.doc.CharactersDoc;
 import com.yihen.search.service.CharactersSearchService;
 import com.yihen.service.CharacterService;
-import com.yihen.service.EpisodeService;
-import com.yihen.service.VideoTaskService;
+import com.yihen.websocket.TaskStatusWebSocketHandler;
 import io.minio.errors.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "角色接口", description = "角色管理")
 @RestController
@@ -41,6 +42,12 @@ public class CharacterController {
 
     @Autowired
     private CharactersSearchService charactersSearchService;
+
+    @Autowired
+    private EpisodeExtractOrchestrator episodeExtractOrchestrator;
+
+    @Autowired
+    private TaskStatusWebSocketHandler taskStatusWebSocketHandler;
 
     @PostMapping("/update")
     @Operation(summary = "修改角色信息")
@@ -82,6 +89,33 @@ public class CharacterController {
         Page<Characters> charactersPage = new Page<>();
         characterService.getByProjectId(projectId, charactersPage);
         return Result.success(charactersPage);
+    }
+
+    @PostMapping("/batch-generate-character-img")
+    @Operation(summary = "批量生成角色图片")
+    public Result<List<Characters>> batchGenerateCharacterImage(@RequestBody List<CharactersRequestVO> charactersRequestVOList) throws Exception {
+        episodeExtractOrchestrator.generateCharacterAndSaveAssetsAsync(
+                charactersRequestVOList,
+                character -> {
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("bizType", "CHARACTER_IMAGE_BATCH");
+                    payload.put("status", "SUCCESS");
+                    payload.put("targetId", character.getId());
+                    payload.put("projectId", character.getProjectId());
+                    payload.put("character", character);
+                    taskStatusWebSocketHandler.sendInfo(character.getProjectId(), payload);
+                },
+                (request, throwable) -> {
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("bizType", "CHARACTER_IMAGE_BATCH");
+                    payload.put("status", "FAIL");
+                    payload.put("targetId", request.getCharcterId());
+                    payload.put("projectId", request.getProjectId());
+                    payload.put("errorMessage", throwable.getMessage());
+                    taskStatusWebSocketHandler.sendInfo(request.getProjectId(), payload);
+                }
+        );
+        return Result.<List<Characters>>success("批量生成任务已提交，结果将逐条推送");
     }
 
 

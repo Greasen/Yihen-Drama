@@ -150,6 +150,7 @@ export const videoTaskApi = {
 export const characterApi = {
   add: (data) => apiClient.post('/api/character/add', data),
   update: (data) => apiClient.post('/api/character/update', data),
+  batchGenerateImage: (data) => apiClient.post('/api/character/batch-generate-character-img', data),
   delete: (id) => apiClient.delete(`/api/character/${id}`),
   listByProject: (projectId, params = {}) => apiClient.get(`/api/character/project/${projectId}`, { params }),
   searchInProject: (projectId, params = {}) => apiClient.get(`/api/character/${projectId}/search`, { params }),

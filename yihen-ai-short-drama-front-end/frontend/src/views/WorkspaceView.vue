@@ -2593,6 +2593,18 @@ const generateCharacterImage = async (character, actionType) => {
 const submitBatchGenerateCharacters = async (characterList) => {
   if (!Array.isArray(characterList) || characterList.length === 0) return false
   try {
+    if (characterList.some(c => !c?.id) && activeEpisode.value) {
+      await loadExtractedInfo(activeEpisode.value)
+    }
+    const validCharacters = characterList.filter(c => !!c?.id)
+    if (validCharacters.length === 0) {
+      toast.warning('角色尚未保存完成，请稍后重试')
+      return false
+    }
+    if (validCharacters.length < characterList.length) {
+      toast.warning('部分角色尚未保存，已跳过')
+    }
+
     const defaultRes = await modelInstanceApi.getDefault('IMAGE')
     const defaultModel = defaultRes?.data
     if (!defaultModel) {
@@ -2600,19 +2612,21 @@ const submitBatchGenerateCharacters = async (characterList) => {
       return false
     }
 
-    const requestList = characterList.map(character => ({
+    const requestList = validCharacters.map(character => ({
       modelInstanceId: defaultModel.id,
       charcterId: character.id,
       projectId: projectId,
       description: character.description || `${character.name}的形象描述`
     }))
 
-    characterList.forEach(character => generatingCharacter.value.add(character.id))
+    validCharacters.forEach(character => generatingCharacter.value.add(character.id))
     await characterApi.batchGenerateImage(requestList)
     toast.success(`已提交 ${requestList.length} 个角色生成任务`)
     return true
   } catch (err) {
-    characterList.forEach(character => generatingCharacter.value.delete(character.id))
+    characterList.forEach(character => {
+      if (character?.id) generatingCharacter.value.delete(character.id)
+    })
     toast.error(err.message || '批量生成提交失败')
     return false
   }

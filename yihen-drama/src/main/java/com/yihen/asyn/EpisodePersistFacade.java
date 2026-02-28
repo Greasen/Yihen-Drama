@@ -112,6 +112,9 @@ public class EpisodePersistFacade {
     }
 
 
+
+
+
     /**
      * 异步执行，但事务仍然有效（关键：方法在 Spring Bean 上）
      * 更新生成图片

@@ -18,7 +18,7 @@ public class CharactersRequestVO  {
 
 
     @Schema(description = "角色Id")
-    private Long charcterId;
+    private Long characterId;
 
     @Schema(description = "项目Id", example = "1")
     private Long ProjectId;

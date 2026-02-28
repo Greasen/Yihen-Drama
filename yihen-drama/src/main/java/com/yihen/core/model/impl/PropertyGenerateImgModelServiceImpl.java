@@ -57,7 +57,7 @@ public class PropertyGenerateImgModelServiceImpl extends ImgModelServiceImpl imp
         String imgUrl = generate(charactersRequestVO.getModelInstanceId(), message);
 
         // 获取角色
-        Characters characters = characterService.getById(charactersRequestVO.getCharcterId());
+        Characters characters = characterService.getById(charactersRequestVO.getCharacterId());
         characters.setAvatar(imgUrl);
         characters.setDescription(charactersRequestVO.getDescription());
 

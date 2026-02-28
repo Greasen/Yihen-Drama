@@ -120,30 +120,6 @@ public class EpisodeExtractOrchestrator {
         return characters;
     }
 
-    // 批量生成人物图片（复用单个生成逻辑，并发执行）
-    public List<Characters> generateCharacterAndSaveAssets(List<CharactersRequestVO> requestList) throws Exception {
-        if (ObjectUtils.isEmpty(requestList)) {
-            throw new RuntimeException("批量生成人物请求不能为空");
-        }
-        if (requestList.size() > 20) {
-            throw new RuntimeException("单次批量生成不能超过20个角色");
-        }
-
-        List<CompletableFuture<Characters>> futures = requestList.stream()
-                .map(request -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        return generateCharacterAndSaveAssets(request);
-                    } catch (Exception e) {
-                        throw new CompletionException(new RuntimeException(
-                                "角色图片生成失败，角色ID: " + request.getCharcterId(), e
-                        ));
-                    }
-                }, episodeExecutor))
-                .toList();
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        return futures.stream().map(CompletableFuture::join).toList();
-    }
 
     public void generateCharacterAndSaveAssetsAsync(
             List<CharactersRequestVO> requestList,

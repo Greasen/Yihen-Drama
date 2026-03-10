@@ -15,9 +15,11 @@ export const modelTypes = {
 
 // 映射UI类型到API类型
 export const mapTypeToApi = (type) => {
-  const mapping = { text: 'TEXT', image: 'IMAGE', video: 'VIDEO', audio: 'AUDIO' }
+  const mapping = { text: 'TEXT', image: 'IMAGE', video: 'VIDEO', audio: 'AUDIO', vector: 'VECTOR' }
   return mapping[type] || type
 }
+
+modelTypes.vector = modelTypes.vector || { label: 'Vector Model', icon: 'vector', color: 'blue' }
 
 // 提供商列表（可从API获取）
 export const modelProviders = {
@@ -54,6 +56,12 @@ export const modelProviders = {
   ]
 }
 
+modelProviders.vector = modelProviders.vector || [
+  { value: 'openai', name: 'OpenAI Embedding', description: 'text-embedding-3 series' },
+  { value: 'ali', name: 'Ali Embedding', description: 'Embedding model from Ali' },
+  { value: 'bge', name: 'BGE', description: 'Open source embedding model' }
+]
+
 // 场景代码选项（匹配后端SceneCode枚举）
 // 后端SceneCode: SCENE_GEN, INFO_EXTRACT, CHARACTER_GEN, STORYBOARD_GEN, VIDEO_GEN
 export const sceneCodeOptions = {
@@ -72,6 +80,10 @@ export const sceneCodeOptions = {
     { value: 'SCENE_GEN', label: '场景生成' }
   ]
 }
+
+sceneCodeOptions.vector = sceneCodeOptions.vector || [
+  { value: 'INFO_EXTRACT', label: '信息提取' }
+]
 
 // 分辨率选项
 export const resolutionOptions = [
@@ -167,13 +179,26 @@ const defaultConfigs = {
   }
 }
 
+defaultConfigs.vector = defaultConfigs.vector || {
+  provider: '',
+  modelDefId: null,
+  apiKey: '',
+  model: '',
+  baseUrl: '',
+  path: '',
+  dimension: 1024,
+  metric: 'cosine',
+  topK: 10,
+  sceneCode: 'INFO_EXTRACT'
+}
+
 /**
  * 模型配置组合式函数
  */
 export function useModelConfig() {
   // 状态
   const instances = ref([])
-  const instanceTotals = reactive({ text: 0, image: 0, video: 0, audio: 0 })
+  const instanceTotals = reactive({ text: 0, image: 0, video: 0, audio: 0, vector: 0 })
   const instancesLoading = ref(false)
   const instancesError = ref(null)
   const saving = ref(false)
@@ -196,6 +221,7 @@ export function useModelConfig() {
   const imageInstances = computed(() => instances.value.filter(i => i.type === 'image'))
   const videoInstances = computed(() => instances.value.filter(i => i.type === 'video'))
   const audioInstances = computed(() => instances.value.filter(i => i.type === 'audio'))
+  const vectorInstances = computed(() => instances.value.filter(i => i.type === 'vector'))
   
     const defaultInstance = computed(() => instances.value.find(i => i.isDefault))
     const isEditing = computed(() => !!currentConfig.id)
@@ -204,7 +230,7 @@ export function useModelConfig() {
 
    // 映射API类型到UI类型
   const mapApiToType = (apiType) => {
-    const mapping = { TEXT: 'text', IMAGE: 'image', VIDEO: 'video', AUDIO: 'audio' }
+    const mapping = { TEXT: 'text', IMAGE: 'image', VIDEO: 'video', AUDIO: 'audio', VECTOR: 'vector' }
     return mapping[apiType?.toUpperCase()] || apiType?.toLowerCase() || 'text'
   }
 
@@ -260,6 +286,10 @@ export function useModelConfig() {
     } else if (uiData.type === 'audio') {
       params.voice = uiData.config?.voice || 'zh-CN-Xiaoxiao'
       params.speed = Number(uiData.config?.speed) || 1.0
+    } else if (uiData.type === 'vector') {
+      params.dimension = Number(uiData.config?.dimension) || 1024
+      params.metric = uiData.config?.metric || 'cosine'
+      params.topK = Number(uiData.config?.topK) || 10
     }
 
     return {
@@ -282,7 +312,8 @@ export function useModelConfig() {
       'TEXT': 'SCENE_GEN',
       'IMAGE': 'CHARACTER_GEN',
       'VIDEO': 'VIDEO_GEN',
-      'AUDIO': 'SCENE_GEN'
+      'AUDIO': 'SCENE_GEN',
+      'VECTOR': 'INFO_EXTRACT'
     }
     return defaults[type] || 'SCENE_GEN'
   }
@@ -293,6 +324,7 @@ export function useModelConfig() {
     if (sceneCode?.includes('IMAGE')) return 'image'
     if (sceneCode?.includes('VIDEO')) return 'video'
     if (sceneCode?.includes('AUDIO') || sceneCode?.includes('VOICE')) return 'audio'
+    if (sceneCode?.includes('VECTOR') || sceneCode?.includes('EMBED')) return 'vector'
     return 'text'
   }
 
@@ -357,7 +389,7 @@ export function useModelConfig() {
   }
 
   const loadInstanceTotals = async () => {
-    const allTypes = ['TEXT', 'IMAGE', 'VIDEO', 'AUDIO']
+    const allTypes = ['TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'VECTOR']
     await Promise.all(allTypes.map(async (modelType) => {
       try {
         const response = await modelInstanceApi.list(modelType, { page: 1, size: 1 })
@@ -414,7 +446,10 @@ export function useModelConfig() {
   // 删除实例
   const deleteInstance = async (id) => {
     try {
-      await modelInstanceApi.delete(id)
+      const result = await modelInstanceApi.delete(id)
+      if (result && typeof result.code !== 'undefined' && result.code !== 200 && result.code !== 0) {
+        throw new Error(result.message || `删除失败 (${result.code})`)
+      }
       instances.value = instances.value.filter(i => i.id !== id)
       
       if (currentConfig.id === id) {
@@ -608,6 +643,7 @@ export function useModelConfig() {
     imageInstances,
     videoInstances,
     audioInstances,
+    vectorInstances,
     defaultInstance,
     isEditing,
 

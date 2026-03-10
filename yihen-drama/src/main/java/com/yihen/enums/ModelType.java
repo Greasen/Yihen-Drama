@@ -20,7 +20,10 @@ public enum ModelType {
     VIDEO(3, "VIDEO", "视频模型"),
 
     @Schema(description = "音频模型")
-    AUDIO(4, "AUDIO", "音频模型");
+    AUDIO(4, "AUDIO", "音频模型"),
+
+    @Schema(description = "向量模型")
+    VECTOR(5, "VECTOR", "向量模型");
 
     @EnumValue
     @Schema(description = "数据库存储值")

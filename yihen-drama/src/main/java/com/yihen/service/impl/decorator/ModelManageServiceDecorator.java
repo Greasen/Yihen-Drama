@@ -95,14 +95,13 @@ public class ModelManageServiceDecorator extends ServiceImpl<ModelDefinitionMapp
         // 删除对应缓存
         ModelInstance modelInstance = modelManageService.getModelInstanceById(id);
 
+        modelManageService.deleteModelInstance(id);
+
+
+
         // 发送MQ消息，同步Redis 和 ES
         rabbitTemplate.convertAndSend(ModelMQConstant.MODEL_EXCHANGE, ModelMQConstant.MODEL_INSTANCE_DELETE_KEY, modelInstance);
 
-
-//        modelCacheInitializer.runByType(modelInstance.getModelType());
-//        redisUtils.delete(ModelManageRedisConstant.MODEL_INSTANCES_KEY+modelInstance.getModelType());
-
-        modelManageService.deleteModelInstance(id);
 
     }
 

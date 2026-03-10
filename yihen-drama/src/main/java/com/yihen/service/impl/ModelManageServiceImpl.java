@@ -3,6 +3,7 @@ package com.yihen.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yihen.asyn.ModelPersistFacade;
 import com.yihen.entity.*;
 import com.yihen.enums.EpisodeStep;
 import com.yihen.enums.ModelType;
@@ -33,8 +34,8 @@ public class ModelManageServiceImpl extends ServiceImpl<ModelDefinitionMapper, M
     @Autowired
     private ModelInstanceDefaultService modelInstanceDefaultService;
 
-    private static final ExecutorService EXECUTORSERVICE = Executors.newFixedThreadPool(5);
-
+    @Autowired
+    private ModelPersistFacade modelPersistFacade;
 
     @Override
     public void addModelDefinition(ModelDefinition modelDefinition) {
@@ -46,23 +47,12 @@ public class ModelManageServiceImpl extends ServiceImpl<ModelDefinitionMapper, M
         // 字段校验
         checkModelInstance(modelInstance);
 
-        // 判断是否需要设置为默认
-        // 创建异步任务，异步更新数据库
-        CompletableFuture.runAsync(() -> {
-            boolean checkedExistUnderType = modelInstanceDefaultService.checkExistUnderType(modelInstance.getModelType());
-
-            // 没有默认，则设置首个为默认
-            if (!checkedExistUnderType) {
-                ModelInstanceDefault modelInstanceDefault = new ModelInstanceDefault();
-                modelInstanceDefault.setModelInstanceId(modelInstance.getId());
-                modelInstanceDefault.setModelType(modelInstance.getModelType());
-                modelInstanceDefaultService.addDefault(modelInstanceDefault);
-            }
-
-        }, EXECUTORSERVICE);
-
 
         modelInstanceMapper.insert(modelInstance);
+
+        // 判断是否需要设置为默认
+        // 创建异步任务，异步更新数据库
+        modelPersistFacade.addDefaultModel(modelInstance);
     }
 
     @Override
@@ -162,8 +152,13 @@ public class ModelManageServiceImpl extends ServiceImpl<ModelDefinitionMapper, M
 
     @Override
     public void deleteModelInstance(Long id) {
-
+        // 默认模型实例不可删除
+        boolean isDefault = modelInstanceDefaultService.checkIsDefault(id);
+        if (isDefault) {
+            throw new RuntimeException("默认模型不可删除");
+        }
         modelInstanceMapper.deleteById(id);
+
     }
 
     @Override

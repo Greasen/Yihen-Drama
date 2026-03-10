@@ -101,9 +101,13 @@
                 <polygon points="23 7 16 12 23 17 23 7"/>
                 <rect x="1" y="5" width="15" height="14" rx="2"/>
               </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg v-else-if="type === 'audio'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
                 <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="8"/>
+                <path d="M12 8v8M8 12h8"/>
               </svg>
             </span>
             {{ info.label }}
@@ -393,6 +397,40 @@
                   </div>
                 </div>
               </template>
+
+              <!-- 向量模型高级设置 -->
+              <template v-if="activeModelType === 'vector'">
+                <div class="config-row">
+                  <label class="config-label">向量维度</label>
+                  <input
+                    type="number"
+                    class="config-input"
+                    min="1"
+                    step="1"
+                    v-model.number="currentConfig.config.dimension"
+                    placeholder="如: 1024"
+                  />
+                </div>
+                <div class="config-row">
+                  <label class="config-label">距离度量</label>
+                  <select class="config-select" v-model="currentConfig.config.metric">
+                    <option value="cosine">Cosine</option>
+                    <option value="dot">Dot Product</option>
+                    <option value="euclidean">Euclidean</option>
+                  </select>
+                </div>
+                <div class="config-row">
+                  <label class="config-label">检索 TopK</label>
+                  <input
+                    type="number"
+                    class="config-input"
+                    min="1"
+                    step="1"
+                    v-model.number="currentConfig.config.topK"
+                    placeholder="如: 5"
+                  />
+                </div>
+              </template>
             </div>
           </div>
           
@@ -679,7 +717,10 @@ const confirmDelete = async () => {
   globalStore.setLoading(true, '删除中...')
   try {
     if (deleteTargetType.value === 'provider') {
-      await modelDefinitionApi.delete(deleteTargetId.value)
+      const result = await modelDefinitionApi.delete(deleteTargetId.value)
+      if (result && typeof result.code !== 'undefined' && result.code !== 200 && result.code !== 0) {
+        throw new Error(result.message || `删除失败 (${result.code})`)
+      }
       await loadProviders()
       testResult.value = { success: true, message: '厂商已删除' }
     } else if (deleteTargetType.value === 'instance') {
@@ -766,7 +807,8 @@ const getModelPlaceholder = (type) => {
     text: '如: gpt-4o, qwen-max',
     image: '如: dall-e-3, stable-diffusion',
     video: '如: kling, runway-gen-2',
-    audio: '如: azure-tts, elevenlabs'
+    audio: '如: azure-tts, elevenlabs',
+    vector: '如: text-embedding-3-large, bge-m3'
   }
   return placeholders[type] || '输入模型名称'
 }
@@ -896,6 +938,7 @@ const onProviderChange = () => {
 .tab-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
   svg { width: 18px; height: 18px; }
   &.purple { background: rgba(212, 175, 55, 0.15); color: var(--gold-light); }
+  &.blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
   &.cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent); }
   &.green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
   &.orange { background: rgba(245, 158, 11, 0.15); color: var(--warning); }

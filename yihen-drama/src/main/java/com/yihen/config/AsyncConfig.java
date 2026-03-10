@@ -66,5 +66,17 @@ public class AsyncConfig {
         return executor;
     }
 
+    @Bean("modelExecutor")
+    public Executor modelExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(8);
+        executor.setMaxPoolSize(16);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("model-");
+        executor.initialize();
+        return executor;
+    }
+
+
 
 }

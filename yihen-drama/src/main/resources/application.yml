@@ -49,7 +49,7 @@ qdrant:
   port: 6334
   collection-name: novel_content
   dimension: 384
-  max-segmentSize-in-tokens: 300
+  max-segmentSize-in-tokens: 100
   max-overlap-size-in-tokens: 30
   max-result: 5
   min-score: 0.8

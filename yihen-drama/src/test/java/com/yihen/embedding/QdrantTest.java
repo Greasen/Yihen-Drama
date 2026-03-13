@@ -25,11 +25,13 @@ import io.qdrant.client.WithPayloadSelectorFactory;
 import io.qdrant.client.WithVectorsSelectorFactory;
 import io.qdrant.client.grpc.Collections;
 import io.qdrant.client.grpc.Points;
+import org.apache.commons.collections4.map.HashedMap;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -249,7 +251,7 @@ public class QdrantTest {
 
     @Test
     public void testQdrantUtilsIngest() {
-        String s = """
+        String text = """
                 一个老旧的钨丝灯被黑色的电线悬在屋子中央，闪烁着昏暗的光芒。
                 　　静谧的气氛犹如墨汁滴入清水，正在房间内晕染蔓延。
                 　　房间的正中央放着一张大圆桌，看起来已经斑驳不堪，桌子中央立着一尊小小的座钟，花纹十分繁复，此刻正滴答作响。
@@ -286,21 +288,30 @@ public class QdrantTest {
                 　　“等等……”一个穿着白大褂的中年男人打断了众人的思路，他缓缓的看向那个清冷女人，开口问道，“我们都刚刚才醒过来，你怎么知道我们被囚禁了「二十四个小时」？”
                 """;
 
+//        String text = "白大褂中年男人说了什么";
+
         NovelChunk novelChunk = new NovelChunk();
         novelChunk.setName("第一章");
         novelChunk.setEpisodeId(1L);
         novelChunk.setProjectId(1L);
         novelChunk.setChapterNumber(1);
 
-        qdrantUtils.ingest(s,novelChunk);
+        qdrantUtils.ingest(text,novelChunk);
     }
 
     @Test
     public void testQdrantUtilsSearch() {
-        String query = "白大褂中年男人说了什么";
+        String query = "昏暗封闭的房间中央悬着一盏闪烁的旧钨丝灯，十个衣着破旧、满身灰尘的男女围坐在一张斑驳的圆桌旁沉睡。桌上有一座滴答作响的座钟，指向十二点时众人同时醒来。房间没有门，四周墙壁、地面和天花板布满方格线条，显得异常诡异。一个戴着腐旧山羊头面具、穿黑色西装的男人站在一旁，自称众人已沉睡十二小时，并称呼他们为“九位”。醒来的众人对自己为何被带到此处毫无记忆，一名清冷女子指责对方涉嫌非法拘禁，而一名白大褂中年人则质疑她如何得知他们被囚禁超过二十四小时，气氛充满疑惑与紧张。";
         NovelChunk novelChunk = new NovelChunk();
         novelChunk.setEpisodeId(1L);
         List<String> search = qdrantUtils.search(query, novelChunk);
-        search.forEach(System.out::println);
+        System.out.println(search.toString());
+    }
+
+    @Test
+    public void test() {
+        new Hashtable<>();
+
+        new HashedMap<>();
     }
 }

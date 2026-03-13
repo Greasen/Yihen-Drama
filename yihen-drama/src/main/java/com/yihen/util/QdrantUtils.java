@@ -16,6 +16,7 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ObjectUtils;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -63,6 +65,13 @@ public class QdrantUtils {
                 .ingest(document);
     }
 
+
+    public void removeByEpisodeId(Long episodeId) {
+        embeddingStore.removeAll(
+                new IsEqualTo("episodeId", episodeId)
+        );
+    }
+
     public List<String> search(String query, NovelChunk novelChunk) {
 
 
@@ -94,6 +103,7 @@ public class QdrantUtils {
 
         // 包装输出
         List<String> result = contents.stream()
+                .sorted(Comparator.comparing(content ->(Integer) content.textSegment().metadata().getInteger("index")))
                 .map(content -> content.textSegment().text())
                 .toList();
 

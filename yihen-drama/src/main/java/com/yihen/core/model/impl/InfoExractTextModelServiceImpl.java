@@ -49,10 +49,13 @@ public class InfoExractTextModelServiceImpl extends TextModelServiceImpl impleme
         
         try {
             JSONObject jsonObject = JSON.parseObject(response);
-            
+
+            String summary = jsonObject.getString("summary");
             JSONArray charactersArray = jsonObject.getJSONArray("characters");
             JSONArray scenesArray = jsonObject.getJSONArray("scenes");
-            
+
+            result.setAbstraction(summary);
+
             if (charactersArray != null) {
                 for (int i = 0; i < charactersArray.size(); i++) {
                     JSONObject charObj = charactersArray.getJSONObject(i);

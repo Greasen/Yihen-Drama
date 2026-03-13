@@ -25,6 +25,9 @@ public class Episode extends BaseEntity {
     @Schema(description = "原始小说内容")
     private String content;
 
+    @Schema(description = "章节摘要")
+    private String abstraction;
+
     @Schema(description = "状态: 0-待开始 1-处理中 2-已完成")
     private EpisodeStatus status;
 

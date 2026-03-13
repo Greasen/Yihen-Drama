@@ -18,4 +18,7 @@ public class ExtractionResultVO {
     @Schema(description = "场景列表")
     private List<Scene> scenes = new ArrayList<>();
 
+    @Schema(description = "摘要")
+    private String abstraction;
+
 }

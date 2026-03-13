@@ -8,6 +8,8 @@ import com.yihen.controller.vo.ExtractionResultVO;
 import com.yihen.entity.Episode;
 import com.yihen.mapper.EpisodeMapper;
 import com.yihen.service.EpisodeService;
+import com.yihen.service.ProjectService;
+import com.yihen.util.QdrantUtils;
 import com.yihen.util.RedisUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,12 +27,13 @@ public class EpisodeServiceDecorator extends ServiceImpl<EpisodeMapper, Episode>
 
     private final EpisodeService episodeService;            // 被装饰�?
     private final RedisUtils redisUtils;
-
+    private final QdrantUtils qdrantUtils;
 
     public EpisodeServiceDecorator(
-            @Qualifier("episodeServiceImpl") EpisodeService episodeService, RedisUtils redisUtils) {
+            @Qualifier("episodeServiceImpl") EpisodeService episodeService, RedisUtils redisUtils, QdrantUtils qdrantUtils) {
         this.episodeService = episodeService;
         this.redisUtils = redisUtils;
+        this.qdrantUtils = qdrantUtils;
     }
 
 
@@ -73,6 +76,8 @@ public class EpisodeServiceDecorator extends ServiceImpl<EpisodeMapper, Episode>
         redisUtils.delete(ProjectRedisConstant.PROJECT_EPISODES_KEY + projectId);
         redisUtils.delete(EpisodeRedisConstant.EPISODE_INFO_KEY + id);
 
+        // 删除向量数据库
+        qdrantUtils.removeByEpisodeId(id);
     }
 
     @Override

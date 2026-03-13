@@ -92,6 +92,8 @@ public class EpisodeExtractOrchestrator {
         // 3. 提取信息
         ExtractionResultVO extract = infoExtractService.extract(textModelRequestVO);
 
+        episode.setAbstraction(extract.getAbstraction());
+
         extract.getCharacters().forEach(c->{
             c.setEpisodeId(episode.getId());
             c.setProjectId(episode.getProjectId());

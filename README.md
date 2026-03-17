@@ -264,6 +264,11 @@ docker compose -f docker-compose.full.yml exec es elasticsearch-plugin list
 - `SPRING_RABBITMQ_HOST/PORT/USERNAME/PASSWORD`
 - `SPRING_ELASTICSEARCH_URIS`
 - `MINIO_END_POINT/MINIO_ACCESS_KEY/MINIO_SECRET_KEY`
+- `OLLAMA_BASE_URL`（默认 `http://localhost:11434/v1`）
+- `OLLAMA_MODEL`（默认 `qwen2.5:7b`）
+
+说明：
+- 使用一键全容器模式时，`OLLAMA_BASE_URL` 建议设置为 `http://host.docker.internal:11434/v1` 以访问宿主机 Ollama 服务。
 
 ---
 
@@ -287,4 +292,3 @@ docker compose -f docker-compose.full.yml exec es elasticsearch-plugin list
 
 - 后端：`yihen-drama/README.md`
 - 前端：`yihen-ai-short-drama-front-end/frontend/README.md`
-

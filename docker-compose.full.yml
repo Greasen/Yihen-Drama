@@ -162,6 +162,8 @@ services:
       MINIO_END_POINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
+      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
+      OLLAMA_MODEL: qwen2.5:7b
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6334
       QDRANT_COLLECTION_NAME: novel_content

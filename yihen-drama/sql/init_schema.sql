@@ -119,7 +119,8 @@ INSERT INTO `model_definition` (`id`, `provider_code`, `base_url`, `status`, `cr
 	(1, 'Deepseek', 'https://api.deepseek.com', 1, '2026-01-20 12:57:40', '2026-01-22 06:12:59', 0),
 	(2, '阿里百炼平台', 'https://dashscope.aliyuncs.com', 1, '2026-01-20 13:48:20', '2026-01-20 13:49:33', 0),
 	(3, 'Kimi', 'https://api.moonshot.cn/v1', 1, '2026-01-21 03:57:22', '2026-01-22 12:03:58', 0),
-	(4, '火山引擎', 'https://ark.cn-beijing.volces.com/api/v3', 1, '2026-01-22 12:03:28', '2026-01-22 12:03:28', 0);
+	(4, '火山引擎', 'https://ark.cn-beijing.volces.com/api/v3', 1, '2026-01-22 12:03:28', '2026-01-22 12:03:28', 0),
+	(5, 'Ollama', 'http://localhost:11434/v1', 1, '2026-03-17 10:00:00', '2026-03-17 10:00:00', 0);
 
 -- 导出  表 yihendrama.model_instance 结构
 DROP TABLE IF EXISTS `model_instance`;
@@ -150,7 +151,8 @@ INSERT INTO `model_instance` (`id`, `model_def_id`, `model_code`, `model_type`, 
 	(7, 4, 'doubao-seedream-4-5-251128', 2, ' Doubao-Seedream-4.5', 3, '/images/generations', 'sk-', '{"size": "2K", "watermark": false}', 1, '2026-01-23 12:13:28', '2026-02-04 13:47:58', 0),
 	(9, 4, 'doubao-seedance-1-5-pro-251215', 3, 'Doubao-seedance-1-5-pro', 5, '/contents/generations/tasks', 'sk-', '{"duration": 5}', 1, '2026-01-24 09:37:53', '2026-01-24 12:38:03', 0),
 	(10, 2, 'kimi-k2-thinking', 1, 'Kimi-k2-thinking', 1, '/compatible-mode/v1', 'sk-','{"max_tokens": 4000, "temperature": 0.7}', 1, '2026-02-02 13:19:55', '2026-02-03 12:08:39', 0),
-	(11, 4, 'doubao-seedance-1-0-lite-i2v-250428', 3, 'Doubao-seedance-1-0-lite-i2v', 5, '/contents/generations/tasks', 'sk-', '{"fps": 30, "duration": 5, "watermark": false}', 1, '2026-02-05 09:06:15', '2026-02-05 09:37:26', 0);
+	(11, 4, 'doubao-seedance-1-0-lite-i2v-250428', 3, 'Doubao-seedance-1-0-lite-i2v', 5, '/contents/generations/tasks', 'sk-', '{"fps": 30, "duration": 5, "watermark": false}', 1, '2026-02-05 09:06:15', '2026-02-05 09:37:26', 0),
+	(12, 5, 'qwen2.5:7b', 1, 'Ollama 本地文本模型', 1, '/chat/completions', 'ollama', '{"temperature": 0.7, "max_tokens": 4096}', 1, '2026-03-17 10:00:00', '2026-03-17 10:00:00', 0);
 
 -- 导出  表 yihendrama.model_instance_default 结构
 DROP TABLE IF EXISTS `model_instance_default`;
